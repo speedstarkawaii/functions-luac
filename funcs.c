@@ -6,6 +6,11 @@ int rbx_luastate;
 int rbx_top = 0;
 int rbx_base = 0;
 
+static int getreg(lua_State* L) {//grab registery
+    lua_pushvalue(L, LUA_REGISTRYINDEX);
+    return 1;
+}
+
 int getrawmetatable(lua_State* L) {
     if (lua_gettop(L) != 1) {
         return rbx_top//whoopsies
@@ -28,6 +33,21 @@ int setrawmetatable(lua_State* L) {
     lua_pushboolean(L, 1);
     return 1;
 }
+
+/*
+https://www.lua.org/pil/13.4.5.html
+ function readOnly (t)
+      local proxy = {}
+      local mt = {       -- create metatable
+        __index = t,
+        __newindex = function (t,k,v)
+          error("attempt to update a read-only table", 2)
+        end
+      }
+      setmetatable(proxy, mt)
+      return proxy
+    end
+    */
 
 int PUBLICREADONLY = false;//ignore was for scripts u can disable
 int setreadonly(lua_State* L) {
@@ -224,9 +244,12 @@ int islclosure(lua_State* L) {
     return 1;
 }
 
-int iscclosure(lua_State* L) {
-    luaL_checktype(L, 1, LUA_TFUNCTION);//func
-    lua_pushboolean(L, lua_iscclosure(L, 1));
+static int iscclosure(lua_State* L) {
+    if (lua_type(L, 1) != LUA_TFUNCTION) {
+        return luaL_error(L, "expected a function as the argument");
+    }
+
+    lua_pushboolean(L, lua_iscfunction(L, 1) ? 1 : 0);//if its c func
     return 1;
 }
 
@@ -534,3 +557,4 @@ int hookmetamethod(lua_State* L) {
     lua_pushvalue(L, 4);
     return 1;
 }
+
